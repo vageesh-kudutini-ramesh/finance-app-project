@@ -64,14 +64,57 @@ serve(async (req) => {
     
     // If it's a username, we need to find the corresponding email
     if (!isEmail) {
-      // Query the profiles table to find email by username
-      const { data: profileData, error: profileError } = await supabaseClient
-        .from('profiles')
-        .select('email')
-        .eq('username', usernameOrEmail)
-        .single()
+      // Use admin client to search auth.users table
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (!supabaseServiceKey) {
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        )
+      }
       
-      if (profileError || !profileData) {
+      const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      })
+      
+      try {
+        // Get all users and find one with matching username in metadata
+        const { data: users, error: usersError } = await adminClient.auth.admin.listUsers()
+        
+        if (usersError || !users) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid username or password' }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400 
+            }
+          )
+        }
+        
+        // Find user with matching username in user_metadata
+        const user = users.users.find(u => 
+          u.user_metadata?.username === usernameOrEmail || 
+          u.user_metadata?.user_name === usernameOrEmail
+        )
+        
+        if (!user) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid username or password' }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400 
+            }
+          )
+        }
+        
+        signInEmail = user.email
+      } catch (error) {
         return new Response(
           JSON.stringify({ error: 'Invalid username or password' }),
           { 
@@ -80,8 +123,6 @@ serve(async (req) => {
           }
         )
       }
-      
-      signInEmail = profileData.email
     }
 
     // Attempt signin with the email
@@ -111,14 +152,11 @@ serve(async (req) => {
       )
     }
 
-    // Success - get username from profiles table
-    const { data: profileData, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('username')
-      .eq('email', data.user.email)
-      .single()
-    
-    const username = profileData?.username || data.user.email?.split('@')[0] || 'user'
+    // Success - get username from user metadata
+    const username = data.user.user_metadata?.username || 
+                   data.user.user_metadata?.user_name || 
+                   data.user.email?.split('@')[0] || 
+                   'user'
     
     const response = {
       accessToken: data.session?.access_token || 'no-token',

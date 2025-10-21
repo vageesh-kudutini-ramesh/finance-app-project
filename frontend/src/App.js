@@ -567,9 +567,10 @@ const LoginForm = ({ onToggle, onForgot }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                  style={{ zIndex: 10 }}
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
@@ -754,9 +755,10 @@ const RegisterForm = ({ onToggle }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                  style={{ zIndex: 10 }}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -775,9 +777,10 @@ const RegisterForm = ({ onToggle }) => {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                  style={{ zIndex: 10 }}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -1012,9 +1015,10 @@ const ForgotPasswordFlow = ({ onBackToLogin }) => {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                    style={{ zIndex: 10 }}
                   >
-                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
@@ -1032,9 +1036,10 @@ const ForgotPasswordFlow = ({ onBackToLogin }) => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                    style={{ zIndex: 10 }}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>

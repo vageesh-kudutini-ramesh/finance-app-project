@@ -23,10 +23,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Create user with Supabase Auth
+    // Create user with Supabase Auth and store username in metadata
     const { data, error } = await supabaseClient.auth.signUp({
       email: email,
-      password: password
+      password: password,
+      options: {
+        data: {
+          username: username,
+          first_name: firstName,
+          last_name: lastName,
+          phone_country_code: phoneCountryCode,
+          phone_number: phoneNumber
+        }
+      }
     })
 
     if (error) throw error
