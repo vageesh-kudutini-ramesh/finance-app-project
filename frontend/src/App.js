@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -27,87 +29,145 @@ import {
 
 
 // ================== API CONFIG ==================
-import { API_BASE_URL } from './config/api';
-const API_BASE_URL_FULL = `${API_BASE_URL}/api`;
-const ALPHA_VANTAGE_API_KEY = 'D6X32ZAVNC0NMZ5T'; // Replace with your actual API key from https://www.alphavantage.co/support/#api-key
+import { getApiUrl, FINNHUB_CONFIG } from './config/api';
+const API_BASE_URL_FULL = getApiUrl(''); // Remove the extra /api since getApiUrl already handles endpoints
 
 // ================== STOCK API SERVICE ==================
 class StockApiService {
   constructor() {
-    this.apiKey = ALPHA_VANTAGE_API_KEY;
-    this.baseURL = 'https://www.alphavantage.co/query';
+    this.apiKey = FINNHUB_CONFIG.apiKey;
+    this.baseURL = FINNHUB_CONFIG.baseURL;
+    
+    // Test if API key is loaded
+    console.log('🔍 Finnhub API Key:', this.apiKey ? '✅ Loaded' : '❌ Missing');
+    console.log('🔍 Base URL:', this.baseURL);
+    console.log('🔍 Environment Variable:', process.env.REACT_APP_FINNHUB_API_KEY);
+    
+    // Test API immediately
+    this.testAPI();
+  }
+
+  async testAPI() {
+    if (this.apiKey) {
+      try {
+        console.log('🔍 Testing Finnhub API...');
+        console.log('🔍 API Key:', this.apiKey ? '✅ Present' : '❌ Missing');
+        console.log('🔍 Base URL:', this.baseURL);
+        
+        // Test Finnhub search API
+        const response = await fetch(
+          `${this.baseURL}/search?q=AAPL&token=${this.apiKey}`
+        );
+        
+        console.log('🔍 Test Response Status:', response.status);
+        console.log('🔍 Test Response Headers:', response.headers);
+        
+        const data = await response.json();
+        console.log('🔍 FULL Test Finnhub Data:', JSON.stringify(data, null, 2));
+        console.log('🔍 Test Data keys:', Object.keys(data));
+      
+        if (data.result && data.result.length > 0) {
+          console.log('🔍 Found', data.result.length, 'matches for AAPL');
+          console.log('🔍 First match:', data.result[0]);
+        } else {
+          console.log('🔍 No results found in Finnhub response');
+          console.log('🔍 Available fields:', Object.keys(data));
+        }
+      } catch (error) {
+        console.log('🔍 Finnhub API Test Failed:', error);
+      }
+    } else {
+      console.log('🔍 No Finnhub API key available for testing');
+    }
   }
 
   async searchStocks(keywords) {
+    console.log('🔍 Searching for:', keywords);
+    
     try {
-      const response = await fetch(
-        `${this.baseURL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(keywords)}&apikey=${this.apiKey}`
-      );
-      const data = await response.json();
-      
-      if (data.bestMatches) {
-        return data.bestMatches.map(match => ({
-          symbol: match['1. symbol'],
-          name: match['2. name'],
-          type: match['3. type'],
-          region: match['4. region'],
-          marketOpen: match['5. marketOpen'],
-          marketClose: match['6. marketClose'],
-          timezone: match['7. timezone'],
-          currency: match['8. currency'],
-          matchScore: match['9. matchScore']
-        }));
+      if (this.apiKey) {
+        console.log('🔍 Using Finnhub API key:', this.apiKey.substring(0, 8) + '...');
+        
+        // Finnhub symbol search API
+        const response = await fetch(
+          `${this.baseURL}/search?q=${encodeURIComponent(keywords)}&token=${this.apiKey}`
+        );
+        
+        console.log('🔍 Finnhub API Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Finnhub API Data received');
+          
+          if (data.result && data.result.length > 0) {
+            const results = data.result.map(item => ({
+              symbol: item.symbol,
+              name: item.description,
+              type: item.type || 'Stock',
+              region: item.primaryExchange || 'US',
+              marketOpen: '09:30',
+              marketClose: '16:00',
+              timezone: 'America/New_York',
+              currency: 'USD',
+              matchScore: item.score || 1.0
+            }));
+            console.log('🔍 Found', results.length, 'stocks for', keywords);
+            return results;
+          } else {
+            console.log('🔍 No results found in Finnhub response');
+          }
+        } else {
+          console.log('🔍 Finnhub API request failed with status:', response.status);
+        }
+      } else {
+        console.log('🔍 No Finnhub API key available');
       }
-      return [];
     } catch (error) {
-      console.error('Error searching stocks:', error);
-      return [];
+      console.log('🔍 Finnhub API Error:', error);
     }
+    
+    console.log('🔍 No results found');
+    return [];
   }
 
   async getStockQuote(symbol) {
+    console.log('🔍 Getting quote for:', symbol);
+    
     try {
-      const response = await fetch(
-        `${this.baseURL}?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${this.apiKey}`
-      );
-      const data = await response.json();
-      
-      if (data['Global Quote']) {
-        const quote = data['Global Quote'];
-        return {
-          symbol: quote['01. symbol'],
-          price: parseFloat(quote['05. price']),
-          change: parseFloat(quote['09. change']),
-          changePercent: quote['10. change percent'],
-          volume: quote['06. volume'],
-          previousClose: parseFloat(quote['08. previous close']),
-          open: parseFloat(quote['02. open']),
-          high: parseFloat(quote['03. high']),
-          low: parseFloat(quote['04. low'])
-        };
+      if (this.apiKey) {
+        // Finnhub quote API
+        const response = await fetch(
+          `${this.baseURL}/quote?symbol=${encodeURIComponent(symbol)}&token=${this.apiKey}`
+        );
+        
+        console.log('🔍 Finnhub Quote Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Finnhub Quote data received');
+          
+          if (data.c && data.c > 0) {
+            // Preserve exact decimal precision
+            const price = data.c.toString();
+            console.log('🔍 Current Price (exact):', price);
+            return price;
+          } else {
+            console.log('🔍 No valid price data in Finnhub response');
+          }
+        } else {
+          console.log('🔍 Finnhub Quote request failed with status:', response.status);
+        }
+      } else {
+        console.log('🔍 No Finnhub API key available for quote');
       }
-      return null;
     } catch (error) {
-      console.error('Error getting stock quote:', error);
-      return null;
+      console.log('🔍 Finnhub Quote Error:', error);
     }
+    
+    console.log('🔍 Could not get price from Finnhub API');
+    return null;
   }
 
-  // Fallback to demo data if API fails
-  getDemoStocks() {
-    return [
-      { symbol: 'AAPL', name: 'Apple Inc.' },
-      { symbol: 'MSFT', name: 'Microsoft Corporation' },
-      { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-      { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-      { symbol: 'TSLA', name: 'Tesla Inc.' },
-      { symbol: 'META', name: 'Meta Platforms Inc.' },
-      { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-      { symbol: 'NFLX', name: 'Netflix Inc.' },
-      { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
-      { symbol: 'JNJ', name: 'Johnson & Johnson' }
-    ];
-  }
 }
 
 const stockApiService = new StockApiService();
@@ -160,13 +220,13 @@ class ApiService {
 
   // -------- Auth --------
   async login(credentials) {
-    return this.request('/auth/signin', {
+    return this.request('signin', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   }
   async register(userData) {
-    return this.request('/auth/signup', {
+    return this.request('signup', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -174,82 +234,82 @@ class ApiService {
 
   // -------- Forgot Password --------
   async sendPasswordResetOtp(email) {
-    return this.request('/auth/forgot-password/send-otp', {
+    return this.request('password-reset', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, action: 'send_otp' }),
     });
   }
   async verifyPasswordResetOtp(email, otp) {
-    return this.request('/auth/forgot-password/verify-otp', {
+    return this.request('password-reset', {
       method: 'POST',
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ email, otp, action: 'verify_otp' }),
     });
   }
   async resetPassword(email, otp, newPassword, confirmNewPassword) {
-    return this.request('/auth/forgot-password/reset', {
+    return this.request('password-reset', {
       method: 'POST',
-      body: JSON.stringify({ email, otp, newPassword, confirmNewPassword }),
+      body: JSON.stringify({ email, otp, newPassword, action: 'verify_otp' }),
     });
   }
 
   // -------- Transactions --------
   async getTransactions() {
-    return this.request('/transactions', { method: 'GET' });
+    return this.request('transactions-get', { method: 'GET' });
   }
   async createTransaction(tx) {
-    return this.request('/transactions', {
+    return this.request('transactions-create', {
       method: 'POST',
       body: JSON.stringify(tx),
     });
   }
   async updateTransaction(id, tx) {
-    return this.request(`/transactions/${id}`, {
+    return this.request(`transactions-update`, {
       method: 'PUT',
       body: JSON.stringify(tx),
     });
   }
   async deleteTransaction(id) {
-    return this.request(`/transactions/${id}`, {
+    return this.request(`transactions-delete?id=${id}`, {
       method: 'DELETE',
     });
   }
 
   // -------- Budgets --------
   async getBudgets() {
-    return this.request('/budgets', { method: 'GET' });
+    return this.request('budgets-get', { method: 'GET' });
   }
   async createBudget(b) {
-    return this.request('/budgets', {
+    return this.request('budgets-create', {
       method: 'POST',
       body: JSON.stringify(b),
     });
   }
-  async updateBudget(id, budget) {
-    return this.request(`/budgets/${id}`, {
+  async updateBudget(id, b) {
+    return this.request(`budgets-update`, {
       method: 'PUT',
-      body: JSON.stringify(budget),
+      body: JSON.stringify(b),
     });
   }
   async deleteBudget(id) {
-    return this.request(`/budgets/${id}`, {
+    return this.request(`budgets-delete?id=${id}`, {
       method: 'DELETE',
     });
   }
 
   // -------- Investments --------
   async getInvestments() {
-    return this.request('/investments', { method: 'GET' });
+    return this.request('investments-get', { method: 'GET' });
   }
 
   async createInvestment(investment) {
-    return this.request('/investments', {
+    return this.request('investments-create', {
       method: 'POST',
       body: JSON.stringify(investment),
     });
   }
 
   async deleteInvestment(id) {
-    return this.request(`/investments/${id}`, {
+    return this.request(`investments-delete?id=${id}`, {
       method: 'DELETE',
     });
   }
@@ -442,6 +502,7 @@ const LoginForm = ({ onToggle, onForgot }) => {
   const [credentials, setCredentials] = useState({ usernameOrEmail: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
 
   const submit = async (e) => {
@@ -472,7 +533,7 @@ const LoginForm = ({ onToggle, onForgot }) => {
               </div>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600 text-lg">Sign in to your financial dashboard</p>
+            <p className="text-gray-600 text-lg">Sign in to your Finwise dashboard</p>
           </div>
 
           {err && <Alert type="error" title="Sign-in failed" message={err} />}
@@ -497,12 +558,19 @@ const LoginForm = ({ onToggle, onForgot }) => {
               <div className="relative">
                 <KeyRound className="h-5 w-5 text-gray-400 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   value={credentials.password}
                   onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
@@ -550,6 +618,8 @@ const RegisterForm = ({ onToggle }) => {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register } = useAuth();
 
   const submit = async (e) => {
@@ -597,7 +667,7 @@ const RegisterForm = ({ onToggle }) => {
               </div>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-600 text-lg">Start your financial journey today</p>
+            <p className="text-gray-600 text-lg">Start your Finwise journey today</p>
           </div>
 
           {err && <Alert type="error" title="Registration failed" message={err} />}
@@ -672,26 +742,44 @@ const RegisterForm = ({ onToggle }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                minLength="6"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                value={userData.password}
-                onChange={(e) => setUserData({ ...userData, password: e.target.value })}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength="6"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                  value={userData.password}
+                  onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                required
-                minLength="6"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                value={userData.confirmPassword}
-                onChange={(e) => setUserData({ ...userData, confirmPassword: e.target.value })}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  minLength="6"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                  value={userData.confirmPassword}
+                  onChange={(e) => setUserData({ ...userData, confirmPassword: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -732,6 +820,8 @@ const ForgotPasswordFlow = ({ onBackToLogin }) => {
   const [confirmPwd, setConfirmPwd] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const clearMsg = () => setMsg({ type: '', text: '' });
 
@@ -807,7 +897,7 @@ const ForgotPasswordFlow = ({ onBackToLogin }) => {
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Reset Your Password</h1>
-            <p className="text-gray-600">We'll help you securely get back in.</p>
+            <p className="text-gray-600">We'll help you securely get back into Finwise.</p>
           </div>
 
           {/* Step Indicators */}
@@ -910,25 +1000,43 @@ const ForgotPasswordFlow = ({ onBackToLogin }) => {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700">New Password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={newPwd}
-                  onChange={(e) => setNewPwd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={newPwd}
+                    onChange={(e) => setNewPwd(e.target.value)}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700">Confirm Password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={confirmPwd}
-                  onChange={(e) => setConfirmPwd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={confirmPwd}
+                    onChange={(e) => setConfirmPwd(e.target.value)}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <button
                 type="submit"
@@ -977,7 +1085,21 @@ const FinanceApp = () => {
   };
 
   const loadTransactions = async () => setExpenses(await apiService.getTransactions());
-  const loadBudgets = async () => setBudgets(await apiService.getBudgets());
+  const loadBudgets = async () => {
+    try {
+      const result = await apiService.getBudgets();
+      console.log('🔍 Budgets loaded:', result);
+      if (Array.isArray(result)) {
+        setBudgets(result);
+      } else {
+        console.error('🔍 Budgets result is not an array:', result);
+        setBudgets([]);
+      }
+    } catch (error) {
+      console.error('🔍 Failed to load budgets:', error);
+      setBudgets([]);
+    }
+  };
   const loadInvestments = async () => setInvestments(await apiService.getInvestments());
 
   // Updated calculations
@@ -1105,7 +1227,7 @@ const FinanceApp = () => {
 
   const Dashboard = () => (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Financial Dashboard</h2>
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">Finwise Dashboard</h2>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1236,7 +1358,7 @@ const FinanceApp = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <DollarSign className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">FinanceApp</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Finwise</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-600">Welcome back, {user?.username || user?.email}!</span>
@@ -1768,76 +1890,76 @@ const InvestmentPortfolio = ({ investments, addInvestment, deleteInvestment, net
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
 
-  // Debounced search function
-  const searchStocks = async (query) => {
-    if (query.length < 2) {
-      setStockSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    setSearchLoading(true);
-    try {
-      const results = await stockApiService.searchStocks(query);
-      setStockSearchResults(results);
-      setShowDropdown(results.length > 0);
+  // Trigger search when typing
+  useEffect(() => {
+    if (newInvestment.symbol && newInvestment.symbol.length >= 1) {
+      const timeoutId = setTimeout(async () => {
+        console.log('🔍 useEffect triggered for:', newInvestment.symbol);
+        try {
+          setSearchLoading(true);
+          const results = await stockApiService.searchStocks(newInvestment.symbol);
+          console.log('🔍 Setting search results:', results);
+          setStockSearchResults(results || []);
+          setShowDropdown((results || []).length > 0);
     } catch (error) {
-      console.error('Search failed:', error);
-      // Fallback to demo data
-      const demoResults = stockApiService.getDemoStocks().filter(stock => 
-        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-        stock.name.toLowerCase().includes(query.toLowerCase())
-      );
-      setStockSearchResults(demoResults);
-      setShowDropdown(demoResults.length > 0);
+          console.log('🔍 Search error:', error);
+          setStockSearchResults([]);
+          setShowDropdown(false);
     } finally {
       setSearchLoading(false);
     }
-  };
-
-  // Debounce the search
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      searchStocks(newInvestment.symbol);
-    }, 300);
+      }, 200);
 
     return () => clearTimeout(timeoutId);
+    } else {
+      setStockSearchResults([]);
+      setShowDropdown(false);
+    }
   }, [newInvestment.symbol]);
 
   const handleStockSelect = async (stock) => {
+    console.log('🔍 Stock selected:', stock);
+    
     setSelectedStock(stock);
-    setNewInvestment({
-      ...newInvestment,
+    setNewInvestment(prev => ({
+      ...prev,
       symbol: stock.symbol,
       name: stock.name
-    });
-    setShowDropdown(false);
-    setStockSearchResults([]);
-
-    // Get current stock price
-    try {
-      const quote = await stockApiService.getStockQuote(stock.symbol);
-      if (quote) {
+    }));
+    
+    // Get current price with full precision
+    const currentPrice = await stockApiService.getStockQuote(stock.symbol);
+    console.log('🔍 Setting current price (exact):', currentPrice);
+    
+    if (currentPrice) {
         setNewInvestment(prev => ({
           ...prev,
-          currentPrice: quote.price.toString()
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to get stock price:', error);
-      // Set a placeholder price
+        currentPrice: currentPrice // Keep as string to preserve precision
+      }));
+    } else {
+      // If API fails, set a placeholder and show message
       setNewInvestment(prev => ({
         ...prev,
         currentPrice: "0.00"
       }));
+      alert(`Could not fetch current price for ${stock.symbol}. Please enter manually.`);
     }
+    
+    // Hide dropdown
+    setStockSearchResults([]);
+    setShowDropdown(false);
   };
 
   const handleSymbolChange = (e) => {
     const value = e.target.value;
     setNewInvestment({ ...newInvestment, symbol: value });
     setSelectedStock(null);
+    
+    // Clear name and current price when symbol changes
+    if (value.length === 0) {
     setNewInvestment(prev => ({ ...prev, name: "", currentPrice: "" }));
+      setStockSearchResults([]);
+    }
   };
 
   const handleAddInvestment = async () => {
@@ -1907,11 +2029,11 @@ const InvestmentPortfolio = ({ investments, addInvestment, deleteInvestment, net
               onFocus={() => setShowDropdown(true)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            {showDropdown && (
+            {showDropdown && stockSearchResults && stockSearchResults.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {searchLoading ? (
                   <div className="px-3 py-2 text-gray-500">Searching...</div>
-                ) : stockSearchResults.length > 0 ? (
+                ) : (
                   stockSearchResults.map((stock, index) => (
                     <div
                       key={index}
@@ -1922,8 +2044,6 @@ const InvestmentPortfolio = ({ investments, addInvestment, deleteInvestment, net
                       <div className="text-sm text-gray-600 truncate">{stock.name}</div>
                     </div>
                   ))
-                ) : (
-                  <div className="px-3 py-2 text-gray-500">No results found</div>
                 )}
               </div>
             )}
