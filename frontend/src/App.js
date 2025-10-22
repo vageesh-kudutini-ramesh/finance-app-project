@@ -1128,15 +1128,67 @@ const FinanceApp = () => {
   const pieData = Object.entries(expenseCategories).map(([name, value]) => ({ name, value }));
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00'];
 
-  const monthlyData = [
-    { month: 'Jan', income: totalIncome * 0.9, expenses: totalExpenses * 0.8 },
-    { month: 'Feb', income: totalIncome * 1.1, expenses: totalExpenses * 1.2 },
-    { month: 'Mar', income: totalIncome * 0.95, expenses: totalExpenses * 0.9 },
-    { month: 'Apr', income: totalIncome, expenses: totalExpenses * 1.1 },
-    { month: 'May', income: totalIncome * 1.05, expenses: totalExpenses * 0.85 },
-    { month: 'Jun', income: totalIncome * 0.98, expenses: totalExpenses * 1.05 },
-    { month: 'Jul', income: totalIncome, expenses: totalExpenses },
-  ];
+  // Calculate real monthly data from actual transactions
+  const calculateMonthlyData = () => {
+    console.log('🔍 Calculating monthly data from expenses:', expenses);
+    
+    if (expenses.length === 0) {
+      console.log('🔍 No expenses found, returning no data');
+      return [{ month: 'No Data', income: 0, expenses: 0 }];
+    }
+
+    // Group transactions by month
+    const monthlyTransactions = expenses.reduce((acc, transaction) => {
+      console.log('🔍 Processing transaction:', transaction);
+      
+      // Handle different date formats
+      let date;
+      if (transaction.transactionDate) {
+        date = new Date(transaction.transactionDate);
+      } else if (transaction.created_at) {
+        date = new Date(transaction.created_at);
+      } else {
+        console.log('🔍 No date found for transaction:', transaction);
+        return acc;
+      }
+      
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          month: monthName,
+          income: 0,
+          expenses: 0,
+          date: date
+        };
+      }
+      
+      if (transaction.type === 'INCOME') {
+        acc[monthKey].income += parseFloat(transaction.amount);
+      } else if (transaction.type === 'EXPENSE') {
+        acc[monthKey].expenses += parseFloat(transaction.amount);
+      }
+      
+      return acc;
+    }, {});
+
+    console.log('🔍 Monthly transactions grouped:', monthlyTransactions);
+
+    // Convert to array and sort by date
+    const monthlyData = Object.values(monthlyTransactions)
+      .sort((a, b) => a.date - b.date)
+      .map(item => ({
+        month: item.month,
+        income: item.income,
+        expenses: item.expenses
+      }));
+
+    console.log('🔍 Final monthly data:', monthlyData);
+    return monthlyData.length > 0 ? monthlyData : [{ month: 'No Data', income: 0, expenses: 0 }];
+  };
+
+  const monthlyData = calculateMonthlyData();
 
   const addExpense = async () => {
     if (!newExpense.description || !newExpense.amount) return;
