@@ -442,7 +442,6 @@ const AnimatedBackground = () => {
         <div className="absolute text-4xl animate-float-gentle" style={{ left: '15%', top: '70%', animationDelay: '2s' }}></div>
         <div className="absolute text-4xl animate-float-gentle" style={{ left: '78%', top: '65%', animationDelay: '3s' }}></div>
         <div className="absolute text-4xl animate-float-gentle" style={{ left: '88%', top: '50%', animationDelay: '4s' }}></div>
-        <div className="absolute text-4xl animate-float-gentle" style={{ left: '7%', top: '50%', animationDelay: '5s' }}>📱</div>
       </div>
 
       {/* Subtle Grid Pattern */}
