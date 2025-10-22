@@ -207,7 +207,7 @@ class ApiService {
       
       const maybeJson = response.headers.get('content-type')?.includes('application/json');
       const payload = maybeJson ? await response.json() : {};
-      const message = payload?.message || `HTTP ${response.status}`;
+      const message = payload?.error || payload?.message || `HTTP ${response.status}`;
       throw new Error(message);
     }
 
